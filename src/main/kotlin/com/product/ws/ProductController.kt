@@ -1,88 +1,88 @@
 package com.product.ws
 
-import com.product.dao.ProductRepository
-import com.product.dao.RatingRepository
 import com.product.entities.Product
 import com.product.entities.Rating
+import com.product.services.IImageService
+import com.product.services.IProductService
+import com.product.services.IRatingService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import java.lang.RuntimeException
-import javax.websocket.server.PathParam
-
+import org.springframework.web.multipart.MultipartFile
+import javax.validation.Valid
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api")
 class ProductController
 {
-    @Autowired lateinit var productRep: ProductRepository;
-    @Autowired lateinit var ratingRep: RatingRepository;
+    @Autowired lateinit var productService: IProductService;
+    @Autowired lateinit var ratingService: IRatingService;
+    @Autowired lateinit var imageService: IImageService;
 
 
-    // return all products by requesting get http://host/api/products
-    @GetMapping fun getAllProducts() : List<Product> = productRep.findAll()
+    // return all products by requesting GET http://host/api/products?page&size&sort&title&subtitle&description
+    @GetMapping("/products") fun getAllProducts(
+            @RequestParam("size",defaultValue="0") size:Int,
+            @RequestParam("page",defaultValue="0") page:Int,
+            @RequestParam("sort",defaultValue="desc") sort:String,
+            @RequestParam("title",defaultValue="") title:String,
+            @RequestParam("subtitle",defaultValue="") subtitle:String,
+            @RequestParam("description",defaultValue="") description:String
+    )
+            = productService.getAllProductsByKeyWords(title, subtitle, description, page, size, sort)
 
 
-    // return product by id by requesting get http://host/api/products/[id of product]
-    // throwing exception when product related to [id] does not exist
-    @GetMapping("/{id}")
-    fun getProduct(@PathVariable("id") id:Long) =
-            productRep.findById(id).orElse(null) ?: throw RuntimeException("Product not found !")
-
-
-
-    // saving new product by requesting post http://host/api/products
-    @PostMapping fun saveProduct(@RequestBody product: Product) = productRep.save(product)
-
-
-    // update any field of product by id by requesting PUT http://host/api/products/[id of product]
-    // throwing exception when product related to [id] does not exist
-    @PutMapping("/{id}")
-    fun updateProduct(@PathVariable("id") id:Long, @RequestBody productMap : Map<String, Any>) : Product?{
-        val product = productRep.findById(id).orElse(null) ?: throw RuntimeException("Product not found !")
-
-        product.title       = productMap.get("title") as? String ?: product.title
-        product.description = productMap.get("description") as? String ?: product.description
-        product.price       = productMap.get("price") as? Double ?: product.price
-        product.subtitle    = productMap.get("subtitle") as? String ?: product.subtitle
-        product.images      = productMap.get("images") as? String ?: product.images
-
-        return productRep.save(product)
+    // return product identified by id by requesting GET http://host/api/products/[id of product]
+    @GetMapping("/products/{id}")
+    fun getProduct(@PathVariable("id") id:Long, @RequestParam("filterFields",defaultValue="") fields:String) : Any? {
+        if(fields.isNotEmpty())
+            return productService.getProduct(id,fields)
+        return productService.getProduct(id)
     }
 
 
-    // delete product by id by requesting DELETE http://host/api/products/[id of product]
-    // throwing exception when product related to [id] does not exist
-    @DeleteMapping("/{id}")
-    fun deleteProduct(@PathParam("id") id:Long) : Boolean {
-        val product = productRep.findById(id).orElse(null) ?: throw RuntimeException("Product not found !")
-        productRep.delete(product)
-        return true
-    }
+    // saving new product by requesting POST http://host/api/products
+    @PostMapping("/products") fun saveProduct(@Valid @RequestBody product: Product) = productService.addProduct(product)
 
 
-    // get all ratings of existing product identified by id by requesting GET http://host/api/products/[id of product]/ratings
-    // throwing exception when product related to [id] does not exist
-    @GetMapping("/{id}/ratings")
-    fun getRatingsOfProduct(@PathVariable("id") id:Long) : List<Rating> {
-        productRep.findById(id).orElse(null) ?: throw RuntimeException("Product not found !")
-        return ratingRep.findAllByProductId(id)
-    }
+    // update any field of product identified by id by requesting PUT|PATCH http://host/api/products/[id of product]
+    @RequestMapping("/products/{id}", method = [RequestMethod.PUT, RequestMethod.PATCH])
+    fun updateProduct(@PathVariable("id") id:Long, @RequestBody productData : Map<String, Any>)
+            = productService.updateProduct(id, productData)
 
 
-    // add new rating of existing product identified by id by requesting POST http://host/api/products/[id of product]/rating
-    // throwing exception when product related to [id] does not exist
-    @PostMapping ("/{id}/rating")
-    fun setRating(@PathVariable("id") id:Long,@RequestBody rating: Rating) : Rating{
-        rating.product = productRep.findById(id).orElse(null) ?: throw RuntimeException("Product not found !")
-        return ratingRep.save(rating)
-    }
+    // delete product identified by id by requesting DELETE http://host/api/products/[id of product]
+    // throwing exception when product related to [id] doesn't exist.
+    @DeleteMapping("/products/{id}") fun deleteProduct(@PathVariable("id") id:Long) = productService.removeProduct(id)
+
+
+    // add new rating of existing product identified by id by requesting POST http://host/api/products/ratings?idProduct=x
+    @PostMapping ("/ratings")
+    fun setRating(@RequestParam("idProduct") idProduct:Long, @RequestBody rating: Rating)
+            = ratingService.addRating(idProduct, rating)
+
 
     // remove rating identified by id by requesting POST http://host/api/products/ratings/[id of rating]
-    // throwing exception when rating related to [id] does not exist
     @DeleteMapping("/ratings/{id}")
-    fun removeRating(@PathVariable("id") id:Long) : Boolean{
-        val rating = ratingRep.findById(id).orElse(null) ?: throw RuntimeException("Rating not found !")
-        ratingRep.delete(rating)
-        return true
-    }
+    fun removeRating(@PathVariable("id") id:Long) = ratingService.removeRating(id)
+
+
+    // Add new image of product
+    // throwing exception when product related to [id] doesn't exist.
+    // throwing exception when type of the file uploaded is not an image
+    @PostMapping("/images")
+    fun addImage(@RequestParam("idProduct") idProduct:Long, @RequestParam("image") file: MultipartFile) =
+            imageService.addImage(idProduct,file)
+
+
+    // remove image identified by id by requesting DELETE http://host/api/images/[id of image]
+    // throwing exception when image related to [id] doesn't exist.
+    @DeleteMapping("/images/{id}")
+    fun removeImage(@PathVariable("id") id:Long) = imageService.removeImage(id)
+
+
+    // load image identified id by requesting GET http://host/api/images/[id of image].jpeg
+    // throwing exception when image related to [id] doesn't exist.
+    @GetMapping("/images/{id}.jpeg", produces = [MediaType.IMAGE_JPEG_VALUE])
+    fun getImage(@PathVariable("id") id:Long) = imageService.getImage(id)
 }
