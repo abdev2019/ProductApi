@@ -18,6 +18,10 @@ repositories {
 }
 
 dependencies {
+
+	implementation( "org.hibernate:hibernate-validator:6.0.14.Final")
+	implementation("org.glassfish:javax.el:3.0.1-b09")
+
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-data-rest")
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
