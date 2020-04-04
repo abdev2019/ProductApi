@@ -1,10 +1,10 @@
 # RESTfull Product Api
 
 A CRUD RESTfull API that manages products and affect ratings and images to products.<br/>
-Technology used : Spring boot microservice. <br/>
-Dependancies manager tool : Gradle. <br/>
-Programing language : Kotlin.<br/>
-IDE : Intellij IDEA.<br/>
+- Technology used : Spring boot microservice. <br/>
+- Dependencies management tool : Gradle. <br/>
+- Programing language : Kotlin.<br/>
+- IDE : Intellij IDEA.<br/>
  
  ### Architecture
 ![alt text](https://raw.githubusercontent.com/abdev2019/ProductApi/master/architecture.PNG)
