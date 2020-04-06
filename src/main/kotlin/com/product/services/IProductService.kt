@@ -1,16 +1,23 @@
 package com.product.services
 
+import com.product.entities.Image
 import com.product.entities.Product
+import com.product.entities.Rating
 import org.springframework.data.domain.Page
+import org.springframework.web.multipart.MultipartFile
 
 
-interface IProductService{
-    fun getAllProducts(): List<Product>
-    fun getAllProducts(page: Int, size: Int, sort: String): Page<Product>
-    fun getAllProductsByKeyWords(title: String, subtitle: String, description: String, page: Int, size: Int, sort: String): Page<Product>
-    fun removeProduct(id:Long): Boolean
-    fun addProduct(product: Product): Product
-    fun updateProduct(idProduct: Long, productDTO: Map<String, Any>) : Product
+
+interface IProductService {
+    fun getProducts(): Page<Product>
+    fun searchProducts(args: Map<String, Any>?): Page<Product>
     fun getProduct(id: Long): Product
-    fun getProduct(id: Long, filterFields:String): Map<String, Any?>
+    fun saveProduct(product:Product): Product
+    fun updateProduct(idProduct: Long, productData: Map<String, Any>) : Product
+    fun removeProduct(id:Long)
+    fun setProductImage(id:Long, files:Array<MultipartFile>): List<Image>
+    fun loadProductImage(idImage:Long): ByteArray
+    fun removeProductImage(idImage:Long)
+    fun addRatingToProduct(idProduct: Long, rating: Rating): Rating
+    fun removeRatingFromProduct(idRating: Long)
 }

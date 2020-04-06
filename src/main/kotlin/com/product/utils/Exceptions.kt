@@ -30,17 +30,24 @@ class ImageNotFoundException() : RuntimeException("Image not found") {}
 @ResponseStatus(value= HttpStatus.NOT_ACCEPTABLE)
 class OnlyImagesAllowedException() : RuntimeException("Only images allowed !") {}
 
+@ResponseStatus(value= HttpStatus.NO_CONTENT)
+class NoItemFoundException() : RuntimeException() {}
 
-// For data validation
+@ResponseStatus(value= HttpStatus.NOT_MODIFIED)
+class NoValueChangedException() : RuntimeException("No value has been changed !") {}
+
+
 @ControllerAdvice
-class ValidationExceptionHandler @Autowired constructor(private val messageSource: MessageSource):
+class ResponseExceptionHandler @Autowired constructor(private val messageSource: MessageSource):
         ResponseEntityExceptionHandler() {
 
+    // For data validation
     // handled when no controller validation activated;
     // When hibernate validation process executed, Mostly when updating entities
     @ExceptionHandler(TransactionSystemException::class)
     protected fun handlePersistenceException(ex: Exception, request: WebRequest?): ResponseEntity<Any?>? {
         print("TransactionSystemException handled !")
+        ex.printStackTrace()
         val body: MutableMap<String, Any?> = HashMap()
         val cause = (ex as TransactionSystemException).rootCause
         if (cause is ConstraintViolationException) {
@@ -56,6 +63,7 @@ class ValidationExceptionHandler @Autowired constructor(private val messageSourc
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error occurred")
     }
+
 
     // handled when controller validation activated (@Valid annotation)
     override fun handleMethodArgumentNotValid(ex: MethodArgumentNotValidException, headers: HttpHeaders, status: HttpStatus, request: WebRequest): ResponseEntity<Any>

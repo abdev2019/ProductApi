@@ -6,13 +6,14 @@ import javax.persistence.*
 import javax.validation.constraints.Min
 
 
+
 @Entity
 data class Product(
-		@Id @GeneratedValue var id: Long? = null,
-		@get:Length(min=2) var title: String = "",
-		var subtitle: String = "",
-		@get:Min(0) var price: Double = 0.0,
-		var description: String = "",
+		@Id @GeneratedValue var id: Long?,
+		@get:Length(min=2) var title: String,
+		var subtitle: String,
+		var description: String,
+		@get:Min(0) var price: Double,
 
 		@JsonManagedReference
 		@OneToMany(mappedBy = "product", fetch = FetchType.LAZY)

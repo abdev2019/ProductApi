@@ -1,15 +1,20 @@
 package com.product.services
 
+import com.product.dao.ImageRepository
 import com.product.dao.ProductRepository
+import com.product.dao.RatingRepository
+import com.product.entities.Image
 import com.product.entities.Product
-import com.product.utils.ProductNotFoundException
+import com.product.entities.Rating
+import com.product.utils.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import javax.transaction.Transactional
+
 
 
 @Service
@@ -17,21 +22,57 @@ import javax.transaction.Transactional
 class ProductService : IProductService {
 
     @Autowired lateinit var productRep: ProductRepository;
+    @Autowired lateinit var ratingRep: RatingRepository;
+    @Autowired lateinit var imageRep: ImageRepository;
 
-    override fun getAllProducts(): List<Product> = productRep.findAll()
 
-
-    // throwing exception when product related to [id] doesn't exist.
-    override fun removeProduct(id:Long): Boolean {
-        val product = productRep.findById(id).orElse(null) ?: throw ProductNotFoundException()
-        productRep.delete(product)
-        return true
+    // return all products
+    override fun getProducts(): Page<Product> {
+        val products = productRep.findAll(Pageable.unpaged())
+        if(products.isEmpty)
+            throw NoItemFoundException()
+        return products
     }
 
-    override fun addProduct(product: Product) = productRep.save(product)
+    // search products by key-words/pagination
+    override fun searchProducts(args: Map<String, Any>?): Page<Product> {
+        val page = args?.get("page") as? Int?:0
+        val size = args?.get("size") as? Int?:0
+        val pageable: Pageable = if(page>0 || size>1) PageRequest.of(page, size) else Pageable.unpaged()
+
+        val products = productRep.findAllByTitleLikeAndSubtitleLikeAndDescriptionLike(
+            "%"+ (args?.get("title") as? String?:"") +"%",
+            "%"+ (args?.get("subtitle") as? String?:"") +"%",
+            "%"+ (args?.get("description") as? String?:"") +"%",
+            pageable
+        )
+        return if(products.isEmpty) throw NoItemFoundException() else products
+    }
+
+    // throwing exception when product related to [id] doesn't exist.
+    override fun getProduct(id: Long) = productRep.findById(id).orElse(null) ?: throw ProductNotFoundException()
+
+    override fun saveProduct(product:Product): Product {
+        return productRep.save(product)
+    }
+
+    override fun setProductImage(id: Long, files: Array<MultipartFile>): List<Image>{
+        val images = ArrayList<Image>()
+        files.forEach { file->
+            if(!(file.contentType?:"").startsWith("image/"))
+                throw OnlyImagesAllowedException()
+            val product = getProduct(id)
+            val image = imageRep.save(Image(null, file.originalFilename+product.id+".jpeg",product))
+            saveImage(image, file)
+            images.add(image)
+        }
+        return images
+    }
 
     // throwing exception when product related to [id] doesn't exist.
     override fun updateProduct(idProduct: Long, productData: Map<String, Any>) : Product {
+        if(productData.isEmpty())
+            throw NoValueChangedException()
         val product = getProduct(idProduct)
         product.title       = productData.get("title") as? String ?: product.title
         product.description = productData.get("description") as? String ?: product.description
@@ -42,37 +83,34 @@ class ProductService : IProductService {
     }
 
     // throwing exception when product related to [id] doesn't exist.
-    override fun getProduct(id: Long) = productRep.findById(id).orElse(null) ?: throw ProductNotFoundException()
-
-
-
-    override fun getAllProducts(page: Int, size: Int, sort: String): Page<Product> {
-        if(size==0) return productRep.findAll( Pageable.unpaged() )
-        var typeSort = Sort.Direction.DESC
-        if(sort == "asc") typeSort = Sort.Direction.ASC
-        return productRep.findAll( PageRequest.of(page,size,typeSort) )
+    override fun removeProduct(id:Long) {
+        val product = productRep.findById(id).orElse(null) ?: throw ProductNotFoundException()
+        productRep.delete(product)
     }
 
-    override fun getAllProductsByKeyWords(title: String, subtitle: String, description: String, page: Int, size: Int, sort: String): Page<Product> {
-        if(size==0)
-            return productRep.findAllByTitleLikeAndSubtitleLikeAndDescriptionLike("%$title%", "%$subtitle%", "%$description%", Pageable.unpaged())
-        val typeSort = Sort.Direction.valueOf(sort)
-        return productRep.findAllByTitleLikeAndSubtitleLikeAndDescriptionLike("%$title%", "%$subtitle%", "%$description%", PageRequest.of(page,size,typeSort))
+    // remove image identified by id by requesting DELETE http://host/api/products/images?idImage=xxx
+    // throwing exception when image related to [id] doesn't exist.
+    override fun removeProductImage(idImage:Long) {
+        val image = imageRep.findById(idImage).orElse(null) ?: throw ImageNotFoundException()
+        imageRep.delete(image)
+        deleteImage(image)
     }
 
+    // load image identified id by requesting GET http://host/api/products/images?idImage=xxx
+    // throwing exception when image related to [id] doesn't exist.
+    override fun loadProductImage(idImage:Long) : ByteArray {
+        val image = imageRep.findById(idImage).orElse(null) ?: throw ImageNotFoundException()
+        return loadImage(image)
+    }
 
-    // throwing exception when product related to [id] doesn't exist.
-    override fun getProduct(id: Long, filterFields:String): Map<String, Any?> {
-        val product = getProduct(id)
-        val fields = filterFields.split(",")
-        val productData: MutableMap<String, Any?> = HashMap()
-        if(fields.contains("id")) productData["id"] = product.id
-        if(fields.contains("title")) productData["title"] = product.title
-        if(fields.contains("description")) productData["description"] = product.description
-        if(fields.contains("price")) productData["price"] = product.price
-        if(fields.contains("subtitle")) productData["subtitle"] = product.subtitle
-        if(fields.contains("ratings")) productData["ratings"] = product.ratings
-        if(fields.contains("images")) productData["images"] = product.images
-        return productData
+    override fun addRatingToProduct(idProduct: Long, rating: Rating): Rating{
+        rating.product = getProduct(idProduct)
+        return ratingRep.save(rating)
+    }
+
+    override fun removeRatingFromProduct(idRating: Long){
+        val rating = ratingRep.findById(idRating).orElse(null) ?: throw RatingNotFoundException()
+        ratingRep.delete(rating)
     }
 }
+

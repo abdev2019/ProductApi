@@ -6,9 +6,9 @@ import javax.persistence.*
 
 @Entity
 data class Image(
-    @Id @GeneratedValue var id: Long? = null,
-    var name: String = "",
+    @Id @GeneratedValue var id: Long?,
+    var name: String,
 
     @JsonBackReference
-    @ManyToOne var product: Product? = null
+    @ManyToOne var product: Product?
 )
