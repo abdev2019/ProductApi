@@ -3,7 +3,7 @@
  # 
  
  ### Architecture
-![alt text](https://raw.githubusercontent.com/abdev2019/ProductApi/master/architecture.PNG)
+![alt text](https://raw.githubusercontent.com/abdev2019/ProductApi/master/archupdated.PNG)
 
 The architecture compose from five layers:
 
@@ -148,7 +148,7 @@ The response will be true on success or a message to notify that the rating does
 
 <br/><br/>
  
-##### Uploading and affect image to product 
+##### Uploading and affect images to product 
 #
 ```sh
 POST  /products/{id}/images 
@@ -158,8 +158,8 @@ POST  /products/{id}/images
 -> Return status code 201[CREATED] on success with returning list of images<br/> 
 -> Return status code 404[NO_FOUND] when no product exist<br/>
 -> Return status code 406[NOT_ACCEPTABLE] when file type is not an image<br/>
-POST Body should has content-type as multipart/form-data and image as field name. 
-The response, on success, will be a JSON containing information about the image or a message to notify that the product does not exist, or that the type of file should be Image
+POST Body should has content-type as multipart/form-data and files as field name. 
+The response, on success, will be a JSON containing information about the images or a message to notify that the product does not exist, or that the type of file should be Image
 
 
 <br/><br/>
